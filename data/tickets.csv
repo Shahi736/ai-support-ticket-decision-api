@@ -1,0 +1,21 @@
+message,expected_action
+"My order arrived damaged. It cost around 3000 rupees. What should I do?",REQUEST_PHOTOS
+"My order arrived damaged, it only cost 500 rupees.",APPROVE_REFUND
+"I received a broken item worth 1800 rupees.",APPROVE_REFUND
+"I received a broken item worth 2500 rupees.",REQUEST_PHOTOS
+"I want to return a laptop I bought 5 days ago. I just changed my mind, it's unused and still in the box.",APPROVE_REFUND
+"I want to return shoes I bought 20 days ago because I don't like the color anymore.",DENY
+"I want to return a blender I bought 3 days ago, it's electronic and I changed my mind.",APPROVE_REFUND
+"My package hasn't arrived yet. It's been a while.",NEEDS_MORE_INFORMATION
+"My order was supposed to arrive 20 days ago and still hasn't shown up. It's been way past the estimated delivery date.",APPROVE_REFUND
+"My order was supposed to arrive 10 days ago and hasn't shown up yet.",NEEDS_MORE_INFORMATION
+"I received a damaged item worth 15000 rupees. This is very serious.",ESCALATE
+"I received a damaged item worth 12000 rupees.",ESCALATE
+"Can I get a refund for a gift card I bought last week?",DENY
+"Can I return a digital ebook I purchased yesterday?",DENY
+"My express shipping order arrived 5 days late. Can I get my shipping fee back?",APPROVE_REFUND
+"My standard shipping order arrived 1 day late.",DENY
+"I want to exchange a shirt for a different size, bought 10 days ago.",APPROVE_REPLACEMENT
+"I dropped my phone after unboxing and now the screen is cracked. Can I get a replacement?",DENY
+"I reported my damaged blender 10 days after delivery. Can I still get a refund?",DENY
+"My refund request is for 2500 rupees, is that automatically approved?",NEEDS_MORE_INFORMATION
