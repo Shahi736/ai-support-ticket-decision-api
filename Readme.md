@@ -9,86 +9,28 @@ What it does
 4. Gemini LLM makes a structured decision using only that context
 5. Ticket + decision are saved to the database and shown in the UI
 
-Architecture
-                               +-------------------+
-                               |     End User      |
-                               +-------------------+
-                                         |
-                                         | Browser UI
-                                         v
-+---------------------------------------------------------------------------------+
-|                       PRESENTATION LAYER (Streamlit)                            |
-|                                                                                 |
-|   • User Authentication (Register / Login)                                      |
-|   • New Ticket Submission & Decision View                                       |
-|   • Ticket History & Audit Log Inspection                                       |
-+---------------------------------------------------------------------------------+
-                                         |
-                                         | HTTP REST (Bearer JWT)
-                                         v
-+---------------------------------------------------------------------------------+
-|                         APPLICATION LAYER (FastAPI)                             |
-|                                                                                 |
-|   +-------------------+    +----------------------+    +--------------------+   |
-|   |   Auth & Security |    |   RAG / Retrieval    |    | Decision Engine    |   |
-|   |  • bcrypt hashing |    |  • Chunking & Top-K  |    | • Prompt assembly  |   |
-|   |  • JWT validation |    |  • Cosine similarity |    | • Output parsing   |   |
-|   +-------------------+    +----------------------+    +--------------------+   |
-|             |                         |                           |             |
-+-------------|-------------------------|---------------------------|-------------+
-              |                         |                           |
-              | Read/Write              | Loads Chunks              | Inference &
-              | User / Tickets          | & Vector Index            | Embeddings
-              v                         v                           v
-     +-----------------+       +-----------------+       +---------------------+
-     |   Persistence   |       | Knowledge Base  |       |   External Services |
-     |                 |       |                 |       |                     |
-     |    SQLite DB    |       | Markdown Policy |       |     Gemini API      |
-     |  • users        |       | Files (.md)     |       |  • text embeddings  |
-     |  • tickets      |       |                 |       |  • flash generation |
-     |  • decisions    |       | kb_embeddings   |       |                     |
-     +-----------------+       +-----------------+       +---------------------+
-        
-    #  REQUEST FLOW
-      
-         User           Streamlit          FastAPI            SQLite         Gemini API       Retrieval / KB
- |                 |                 |                 |                |                  |
- | 1. Submit ticket|                 |                 |                |                  |
- |---------------->|                 |                 |                |                  |
- |                 | 2. POST /tickets|                 |                |                  |
- |                 |    (JWT+message)|                 |                |                  |
- |                 |---------------->|                 |                |                  |
- |                 |                 | 3. Save ticket  |                |                  |
- |                 |                 |---------------->|                |                  |
- |                 |                 |                 |                |                  |
- |                 |                 | 4. Embed query  |                |                  |
- |                 |                 |--------------------------------->|                  |
- |                 |                 |    (query_vector)                |                  |
- |                 |                 |<---------------------------------|                  |
- |                 |                 |                                  |                  |
- |                 |                 | 5. Top-K similarity check        |                  |
- |                 |                 |---------------------------------------------------->|
- |                 |                 |    Top 3 policy chunks           |                  |
- |                 |                 |<----------------------------------------------------|
- |                 |                 |                                  |                  |
- |                 |                 | 6. Prompt: Query + Top Chunks    |                  |
- |                 |                 |--------------------------------->|                  |
- |                 |                 |    Structured JSON decision      |                  |
- |                 |                 |<---------------------------------|                  |
- |                 |                 |                                  |                  |
- |                 |                 | [7. Validate Pydantic Schema]    |                  |
- |                 |                 |     (Valid / Fallback fallback)  |                  |
- |                 |                 |                                  |                  |
- |                 |                 | 8. Save decision|                |                  |
- |                 |                 |---------------->|                |                  |
- |                 |                 |                 |                |                  |
- |                 | 9. HTTP 200     |                 |                |                  |
- |                 |    Ticket+Action|                 |                |                  |
- |                 |<----------------|                 |                |                  |
- | 10. Display card|                 |                 |                |                  |
- |<----------------|                 |                 |                |                  |
 
-       
+# Architecture
+![Architecture](screenshots/architecture.png)
+ The application uses Streamlit for the frontend, FastAPI for the backend,
+RAG for policy retrieval, Gemini for AI decisions, and SQLite for persistence.
+
+
+
+# Request Flow
+![Request flow diagram](screenshots/application.png)
+1. User types their issue in Streamlit and clicks **Get Decision**
+2. Streamlit sends `POST /tickets` with the JWT and message
+3. FastAPI saves the ticket to SQLite
+4. FastAPI embeds the message via Gemini
+5. FastAPI retrieves the top 3 relevant policy chunks (cosine similarity)
+6. FastAPI sends the ticket + chunks to Gemini as context
+7. Gemini returns structured JSON, validated against a Pydantic schema
+8. FastAPI saves the decision to SQLite
+9. Response returned to Streamlit
+10. Streamlit displays the result to the user
+
+
 # Tech stack
 Backend: FastAPI, SQLAlchemy, Pydantic
 Database: SQLite
@@ -100,33 +42,7 @@ Testing: pytest
 
 #  Project structure
 
-
-intern-project/
-├── README.md
-├── DEVELOPMENT.md
-├── requirements.txt
-├── .env.example
-├── .gitignore
-├── data/
-│   └── tickets.csv          # sample test cases for evaluation
-├── knowledge_base/
-│   ├── refunds.md
-│   ├── returns.md
-│   ├── shipping.md
-│   └── damaged_goods.md
-├── src/
-│   ├── api.py                # FastAPI app + all routes
-│   ├── auth.py                # password hashing, JWT
-│   ├── database.py            # SQLAlchemy models + session
-│   ├── deps.py                 # get_current_user dependency
-│   ├── schemas.py              # Pydantic request/response models
-│   ├── retrieval.py             # RAG: chunking, embedding, retrieval
-│   └── decision.py              # LLM decision pipeline
-├── streamlit_app.py
-└── tests/
-    ├── test_auth.py            # auth + authorization tests
-    └── evaluate.py               # evaluation script (accuracy report)
-
+![Project Structure  diagram](screenshots/ProjectStructure.png)
 
 
   #  Setup
@@ -176,21 +92,24 @@ Go to New Decision, describe your issue, click Get Decision — see the recommen
 Go to History to view past tickets and their decisions
 
 
-API endpoint
-+--------+------------------+----------------------------------------+---------------+
-| Method | Endpoint         | Purpose                                | Auth Required |
-+--------+------------------+----------------------------------------+---------------+
-| POST   | /register        | Create a user account                  | No            |
-| POST   | /login           | Verify credentials, return a JWT       | No            |
-| GET    | /me              | Return the authenticated user          | Yes           |
-| POST   | /tickets         | Submit a ticket, generate AI decision  | Yes           |
-| GET    | /tickets         | List the current user's tickets        | Yes           |
-| GET    | /tickets/{id}    | Get one ticket + its decision          | Yes           |
-+--------+------------------+----------------------------------------+---------------+
-
 All protected routes require Authorization: Bearer <JWT>.
 
 # RAG pipeline
+
+## API Endpoints
+
+## API Endpoints
+
+| Method | Endpoint | Purpose | Auth Required |
+|:------:|----------|---------|:-------------:|
+| `POST` | `/register` | Create a new user account | ❌ No |
+| `POST` | `/login` | Verify credentials and return a JWT | ❌ No |
+| `GET` | `/me` | Get the authenticated user's details | ✅ Yes |
+| `POST` | `/tickets` | Submit a ticket and generate an AI decision | ✅ Yes |
+| `GET` | `/tickets` | Get all tickets for the current user | ✅ Yes |
+| `GET` | `/tickets/{id}` | Get a specific ticket and its decision | ✅ Yes |
+
+All protected routes require `Authorization: Bearer <JWT>`.
 Policy .md files in knowledge_base/ are loaded and split into ~500-character overlapping chunks
 Each chunk is embedded with Gemini and cached locally to kb_embeddings.pkl (numpy array, no vector DB)
 An incoming ticket is embedded and compared against cached chunks with cosine similarity
@@ -235,3 +154,4 @@ Note: Gemini's free tier is limited to 5 requests/minute, so this script include
 Free-tier Gemini rate limits (5 req/min) can affect heavy testing
 Delete kb_embeddings.pkl to force re-embedding if the knowledge base changes
 SQLite is used for simplicity, per assignment scope — not for concurrent production use
+
