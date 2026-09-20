@@ -18,7 +18,7 @@ RAG for policy retrieval, Gemini for AI decisions, and SQLite for persistence.
 
 
 # Request Flow
-![Request flow diagram](screenshots/application.png)
+![Request flow diagram](screenshots/RequestFlow.png)
 1. User types their issue in Streamlit and clicks **Get Decision**
 2. Streamlit sends `POST /tickets` with the JWT and message
 3. FastAPI saves the ticket to SQLite
